@@ -1,0 +1,32 @@
+services:
+  mysql-container:
+    container_name: mysql-container
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - 3306:3306
+    networks:
+      - gommunity-network
+
+  fiber-app:
+    container_name: fiber-app
+    build:
+      dockerfile: Dockerfile
+    depends_on:
+      - mysql-container
+    ports:
+      - 8080:8080
+    networks:
+      - gommunity-network
+
+networks:
+  gommunity-network:
+    driver: bridge
+
+volumes:
+  mysql-data:

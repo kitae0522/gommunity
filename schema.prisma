@@ -1,0 +1,58 @@
+generator db {
+  provider = "go run github.com/steebchen/prisma-client-go"
+  output   = "./internal/model"
+  // binaryTargets = ["debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+  package  = "model"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRoles {
+  USER
+  ADMIN
+}
+
+model Users {
+  id            Int               @id @default(autoincrement())
+  handle        String            @unique
+  email         String            @unique
+  hashPassword  String
+  salt          String
+  role          UserRoles
+  name          String
+  profilePic    String?
+  bio           String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  Thread        Thread[]
+
+  @@index([email])
+}
+
+model Thread {
+  id            Int               @id @default(autoincrement())
+  userID        Int
+  title         String?
+  imgUrl        String?
+  content       String
+  parentThread  Int?
+  nextThread    Int?
+  prevThread    Int?
+  views         Int               @default(0)
+  likes         Int               @default(0)
+  dislikes      Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  user          Users             @relation(fields: [userID], references: [id], onDelete: Cascade)
+  parent        Thread?           @relation("parentThreadFK", fields: [parentThread], references: [id], onDelete: Cascade)
+  next          Thread?           @relation("nextThreadFK", fields: [nextThread], references: [id], onDelete: Cascade)
+  prev          Thread?           @relation("prevThreadFK", fields: [prevThread], references: [id], onDelete: Cascade)
+
+  ParentThreadFK  Thread[]          @relation("parentThreadFK")
+  NextThreadFK    Thread[]          @relation("nextThreadFK")
+  PrevThreadFK    Thread[]          @relation("prevThreadFK")
+}

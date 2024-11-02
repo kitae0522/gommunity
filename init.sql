@@ -1,0 +1,2 @@
+DROP DATABASE IF EXISTS `GommunityDB`;
+CREATE DATABASE `GommunityDB`;
