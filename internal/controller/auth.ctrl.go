@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"log"
-
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/kitae0522/gommunity/internal/dto"
@@ -47,9 +45,9 @@ func (c *AuthController) Restricted(router fiber.Router) {
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
-	var createUserPayload dto.AuthRegisterReq
-	if err := utils.Bind(ctx, createUserPayload); err != nil {
-		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", err)
+	var createUserPayload dto.AuthRegisterRequest
+	if errs := utils.Bind(ctx, &createUserPayload); len(errs) > 0 {
+		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", errs)
 	}
 
 	err := c.authService.Register(createUserPayload)
@@ -63,7 +61,7 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 		return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 회원가입 실패. Repository에서 문제 발생", err)
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(dto.DefaultRes{
+	return ctx.Status(fiber.StatusCreated).JSON(dto.DefaultResponse{
 		IsError:    false,
 		StatusCode: fiber.StatusCreated,
 		Message:    "✅ 회원가입 완료",
@@ -71,14 +69,13 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Login(ctx *fiber.Ctx) error {
-	var loginPayload dto.AuthLoginReq
-	if err := utils.Bind(ctx, loginPayload); err != nil {
-		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 로그인 실패. Body Binding 과정에서 문제 발생", err)
+	var loginPayload dto.AuthLoginRequest
+	if errs := utils.Bind(ctx, &loginPayload); len(errs) > 0 {
+		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", errs)
 	}
 
 	token, err := c.authService.Login(loginPayload.Email, loginPayload.Password)
 	if err != nil {
-		log.Printf("%v", err)
 		switch err {
 		case model.ErrNotFound:
 			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 로그인 실패. 존재하지 않는 사용자입니다.", err)
@@ -89,7 +86,7 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.AuthLoginRes{
+	return ctx.Status(fiber.StatusOK).JSON(dto.AuthLoginResponse{
 		IsError:    false,
 		StatusCode: fiber.StatusOK,
 		Message:    "✅ 로그인 완료",
@@ -98,14 +95,14 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
-	var passwordResetPayload dto.AuthPasswordResetReq
-	if err := utils.Bind(ctx, passwordResetPayload); err != nil {
-		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 비밀번호 초기화 실패. Body Binding 과정에서 문제 발생", err)
+	var passwordResetPayload dto.AuthPasswordResetRequest
+	if errs := utils.Bind(ctx, passwordResetPayload); len(errs) > 0 {
+		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 비밀번호 초기화 실패. Body Binding 과정에서 문제 발생", errs)
 	}
 
 	resetEntity := dto.AuthPasswordResetEntity{
 		Email:           middleware.GetEmailFromMiddleware(ctx),
-		PasswordPayload: passwordResetPayload,
+		PasswordPayload: &passwordResetPayload,
 	}
 
 	if err := c.authService.PasswordReset(resetEntity); err != nil {
@@ -119,7 +116,7 @@ func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.DefaultRes{
+	return ctx.Status(fiber.StatusOK).JSON(dto.DefaultResponse{
 		IsError:    false,
 		StatusCode: fiber.StatusOK,
 		Message:    "✅ 비밀번호 초기화 완료",
@@ -127,7 +124,8 @@ func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Withdraw(ctx *fiber.Ctx) error {
-	var withdrawPayload dto.AuthWithdrawEntity = dto.AuthWithdrawEntity{Email: middleware.GetEmailFromMiddleware(ctx)}
+	var withdrawPayload dto.AuthWithdrawRequest
+	withdrawPayload.Email = middleware.GetEmailFromMiddleware(ctx)
 
 	if err := c.authService.Withdraw(withdrawPayload.Email); err != nil {
 		switch err {
@@ -140,7 +138,7 @@ func (c *AuthController) Withdraw(ctx *fiber.Ctx) error {
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.DefaultRes{
+	return ctx.Status(fiber.StatusOK).JSON(dto.DefaultResponse{
 		IsError:    false,
 		StatusCode: fiber.StatusOK,
 		Message:    "✅ 유저 탈퇴 완료",
