@@ -15,7 +15,7 @@ func NewAuthService(repo *repository.AuthRepository) *AuthService {
 	return &AuthService{authRepo: repo}
 }
 
-func (s *AuthService) Register(req dto.AuthRegisterRequest) error {
+func (s *AuthService) Register(req dto.RegisterRequest) error {
 	// 1. Check if password and confirmation password match
 	if err := s.comprePassword(req.Password, req.PasswordConfirm); err != nil {
 		return err
@@ -50,14 +50,14 @@ func (s *AuthService) Login(email, password string) (string, error) {
 	return token, nil
 }
 
-func (s *AuthService) HandleReset(req dto.AuthHandleResetEntity) error {
+func (s *AuthService) HandleReset(req dto.HandleResetEntity) error {
 	if err := s.authRepo.UpdateUserHandle(req.Email, req.Handle); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *AuthService) PasswordReset(req dto.AuthPasswordResetEntity) error {
+func (s *AuthService) PasswordReset(req dto.PasswordResetEntity) error {
 	// 1. Compare NewPassword, NewPasswordConfirm
 	if err := s.comprePassword(req.PasswordPayload.NewPassword, req.PasswordPayload.NewPasswordConfirm); err != nil {
 		return err

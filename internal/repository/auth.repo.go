@@ -17,7 +17,7 @@ func NewAuthRepository(prismaClient *model.PrismaClient) *AuthRepository {
 	return &AuthRepository{client: prismaClient}
 }
 
-func (r *AuthRepository) CreateUser(req dto.AuthRegisterRequest) (*model.UsersModel, error) {
+func (r *AuthRepository) CreateUser(req dto.RegisterRequest) (*model.UsersModel, error) {
 	salt := crypt.EncodeBase64(utils.GenerateUUID())
 	hashPassword := crypt.NewSHA256(req.Password, salt)
 

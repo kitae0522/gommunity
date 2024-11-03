@@ -45,7 +45,7 @@ func (c *AuthController) Restricted(router fiber.Router) {
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
-	var createUserPayload dto.AuthRegisterRequest
+	var createUserPayload dto.RegisterRequest
 	if errs := utils.Bind(ctx, &createUserPayload); len(errs) > 0 {
 		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", errs)
 	}
@@ -69,7 +69,7 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Login(ctx *fiber.Ctx) error {
-	var loginPayload dto.AuthLoginRequest
+	var loginPayload dto.LoginRequest
 	if errs := utils.Bind(ctx, &loginPayload); len(errs) > 0 {
 		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", errs)
 	}
@@ -86,7 +86,7 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.AuthLoginResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dto.LoginResponse{
 		IsError:    false,
 		StatusCode: fiber.StatusOK,
 		Message:    "✅ 로그인 완료",
@@ -95,12 +95,12 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
-	var passwordResetPayload dto.AuthPasswordResetRequest
+	var passwordResetPayload dto.PasswordResetRequest
 	if errs := utils.Bind(ctx, passwordResetPayload); len(errs) > 0 {
 		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 비밀번호 초기화 실패. Body Binding 과정에서 문제 발생", errs)
 	}
 
-	resetEntity := dto.AuthPasswordResetEntity{
+	resetEntity := dto.PasswordResetEntity{
 		Email:           middleware.GetEmailFromMiddleware(ctx),
 		PasswordPayload: &passwordResetPayload,
 	}
@@ -124,7 +124,7 @@ func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Withdraw(ctx *fiber.Ctx) error {
-	var withdrawPayload dto.AuthWithdrawRequest
+	var withdrawPayload dto.WithdrawRequest
 	withdrawPayload.Email = middleware.GetEmailFromMiddleware(ctx)
 
 	if err := c.authService.Withdraw(withdrawPayload.Email); err != nil {
