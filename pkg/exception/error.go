@@ -5,14 +5,7 @@ import (
 )
 
 func CreateErrorResponse(ctx *fiber.Ctx, statusCode int, errMessage string, err interface{}) error {
-	var errDetail interface{}
-	if e, ok := err.(error); ok {
-		errDetail = e.Error()
-	} else {
-		errDetail = err
-	}
-
-	ctxError := GenerateErrorCtx(statusCode, errMessage, errDetail)
+	ctxError := GenerateErrorCtx(statusCode, errMessage, getErrorDetail(err))
 	return ctx.Status(statusCode).JSON(ctxError)
 }
 
@@ -21,6 +14,16 @@ func GenerateErrorCtx(statusCode int, errMessage string, err interface{}) *ErrRe
 		IsError:    true,
 		StatusCode: statusCode,
 		Message:    errMessage,
-		Error:      err,
+		Error:      getErrorDetail(err),
 	}
+}
+
+func getErrorDetail(err interface{}) interface{} {
+	var errDetail interface{}
+	if e, ok := err.(error); ok {
+		errDetail = e.Error()
+	} else {
+		errDetail = err
+	}
+	return errDetail
 }
