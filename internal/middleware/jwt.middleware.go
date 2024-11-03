@@ -16,14 +16,14 @@ func JWTMiddleware(ctx *fiber.Ctx) error {
 	}
 	token := authHeader[1]
 
-	email, err := crypt.ParseJWT(token)
+	uuid, err := crypt.ParseJWT(token)
 	if err != nil {
 		return exception.CreateErrorResponse(ctx, fiber.StatusUnauthorized, "❌ 유효하지 않는 토큰 값입니다.", err)
 	}
-	ctx.Locals("email", email)
+	ctx.Locals("uuid", uuid)
 	return ctx.Next()
 }
 
-func GetEmailFromMiddleware(ctx *fiber.Ctx) string {
-	return ctx.Locals("email").(string)
+func GetIdFromMiddleware(ctx *fiber.Ctx) string {
+	return ctx.Locals("uuid").(string)
 }

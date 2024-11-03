@@ -36,13 +36,13 @@ func (r *AuthRepository) GetUserByEmail(email string) (*model.UsersModel, error)
 	return r.findUserByEmail(email)
 }
 
-func (r *AuthRepository) GetUserPassword(email string) (*dto.PasswordEntity, error) {
+func (r *AuthRepository) GetUserPasswordByEmail(email string) (*dto.PasswordEntity, error) {
 	user, err := r.findUserByEmail(email)
 	if err != nil {
 		return nil, err
 	}
 	return &dto.PasswordEntity{
-		Email:        user.Email,
+		ID:           user.ID,
 		HashPassword: user.HashPassword,
 		Salt:         user.Salt,
 		Role:         user.Role,
@@ -50,28 +50,43 @@ func (r *AuthRepository) GetUserPassword(email string) (*dto.PasswordEntity, err
 	}, err
 }
 
-func (r *AuthRepository) UpdateUserHandle(email string, handle string) error {
+func (r *AuthRepository) GetUserPasswordByID(ID string) (*dto.PasswordEntity, error) {
+	user, err := r.client.Users.FindUnique(model.Users.ID.Equals(ID)).Exec(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.PasswordEntity{
+		ID:           user.ID,
+		HashPassword: user.HashPassword,
+		Salt:         user.Salt,
+		Role:         user.Role,
+		Handle:       user.Handle,
+	}, err
+}
+
+func (r *AuthRepository) UpdateUserHandle(ID string, handle string) error {
 	_, err := r.client.Users.FindUnique(
-		model.Users.Email.Equals(email),
+		model.Users.ID.Equals(ID),
 	).Update(
 		model.Users.Handle.Set(handle),
 	).Exec(context.Background())
 	return err
 }
 
-func (r *AuthRepository) UpdateUserPassword(email, salt, plainPassword string) error {
+func (r *AuthRepository) UpdateUserPassword(ID, salt, plainPassword string) error {
 	hashPassword := crypt.NewSHA256(plainPassword, salt)
 	_, err := r.client.Users.FindUnique(
-		model.Users.Email.Equals(email),
+		model.Users.ID.Equals(ID),
 	).Update(
 		model.Users.HashPassword.Set(hashPassword),
 	).Exec(context.Background())
 	return err
 }
 
-func (r *AuthRepository) DeleteUser(email string) (bool, error) {
+func (r *AuthRepository) DeleteUser(ID string) (bool, error) {
 	_, err := r.client.Users.FindUnique(
-		model.Users.Email.Equals(email),
+		model.Users.ID.Equals(ID),
 	).Delete().Exec(context.Background())
 
 	if err != nil {

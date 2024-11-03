@@ -31,7 +31,7 @@ func (s *AuthService) Register(req dto.RegisterRequest) error {
 
 func (s *AuthService) Login(email, password string) (string, error) {
 	// 1. Get PasswordInfo
-	passwordInfo, err := s.authRepo.GetUserPassword(email)
+	passwordInfo, err := s.authRepo.GetUserPasswordByEmail(email)
 	if err != nil {
 		return "", err
 	}
@@ -42,7 +42,7 @@ func (s *AuthService) Login(email, password string) (string, error) {
 	}
 
 	// 3. Generate JWT Token
-	token, err := crypt.NewToken(string(passwordInfo.Role), passwordInfo.Email, []byte("tempSecret"))
+	token, err := crypt.NewToken(string(passwordInfo.Role), passwordInfo.ID, []byte("tempSecret"))
 	if err != nil {
 		return "", err
 	}
@@ -51,7 +51,7 @@ func (s *AuthService) Login(email, password string) (string, error) {
 }
 
 func (s *AuthService) HandleReset(req dto.HandleResetEntity) error {
-	if err := s.authRepo.UpdateUserHandle(req.Email, req.Handle); err != nil {
+	if err := s.authRepo.UpdateUserHandle(req.ID, req.Handle); err != nil {
 		return err
 	}
 	return nil
@@ -64,7 +64,7 @@ func (s *AuthService) PasswordReset(req dto.PasswordResetEntity) error {
 	}
 
 	// 2. Get UserPassword
-	passwordInfo, err := s.authRepo.GetUserPassword(req.Email)
+	passwordInfo, err := s.authRepo.GetUserPasswordByID(req.ID)
 	if err != nil {
 		return err
 	}
@@ -75,15 +75,15 @@ func (s *AuthService) PasswordReset(req dto.PasswordResetEntity) error {
 	}
 
 	// 4. Update UserPassword
-	if err := s.authRepo.UpdateUserPassword(passwordInfo.Email, passwordInfo.Salt, req.PasswordPayload.NewPassword); err != nil {
+	if err := s.authRepo.UpdateUserPassword(passwordInfo.ID, passwordInfo.Salt, req.PasswordPayload.NewPassword); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *AuthService) Withdraw(email string) error {
-	if ok, err := s.authRepo.DeleteUser(email); err != nil {
+func (s *AuthService) Withdraw(ID string) error {
+	if ok, err := s.authRepo.DeleteUser(ID); err != nil {
 		return err
 	} else if !ok {
 		return exception.ErrUnableToDeleteUser

@@ -96,12 +96,12 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 
 func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
 	var passwordResetPayload dto.PasswordResetRequest
-	if errs := utils.Bind(ctx, passwordResetPayload); len(errs) > 0 {
+	if errs := utils.Bind(ctx, &passwordResetPayload); len(errs) > 0 {
 		return exception.CreateErrorResponse(ctx, fiber.StatusBadRequest, "❌ 비밀번호 초기화 실패. Body Binding 과정에서 문제 발생", errs)
 	}
 
 	resetEntity := dto.PasswordResetEntity{
-		Email:           middleware.GetEmailFromMiddleware(ctx),
+		ID:              middleware.GetIdFromMiddleware(ctx),
 		PasswordPayload: &passwordResetPayload,
 	}
 
@@ -125,9 +125,9 @@ func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
 
 func (c *AuthController) Withdraw(ctx *fiber.Ctx) error {
 	var withdrawPayload dto.WithdrawRequest
-	withdrawPayload.Email = middleware.GetEmailFromMiddleware(ctx)
+	withdrawPayload.ID = middleware.GetIdFromMiddleware(ctx)
 
-	if err := c.authService.Withdraw(withdrawPayload.Email); err != nil {
+	if err := c.authService.Withdraw(withdrawPayload.ID); err != nil {
 		switch err {
 		case model.ErrNotFound:
 			return exception.CreateErrorResponse(ctx, fiber.StatusNotFound, "❌ 유저 탈퇴 실패. 존재하지 않는 사용자입니다.", err)
@@ -138,9 +138,9 @@ func (c *AuthController) Withdraw(ctx *fiber.Ctx) error {
 		}
 	}
 
-	return ctx.Status(fiber.StatusNoContent).JSON(dto.DefaultResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dto.DefaultResponse{
 		IsError:    false,
-		StatusCode: fiber.StatusNoContent,
+		StatusCode: fiber.StatusOK,
 		Message:    "✅ 유저 탈퇴 완료",
 	})
 }

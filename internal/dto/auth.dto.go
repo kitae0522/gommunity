@@ -23,7 +23,7 @@ type LoginResponse struct {
 }
 
 type HandleResetEntity struct {
-	Email  string
+	ID     string
 	Handle string
 }
 
@@ -34,16 +34,16 @@ type PasswordResetRequest struct {
 }
 
 type PasswordResetEntity struct {
-	Email           string                `json:"email" validate:"required,email"`
+	ID              string                `json:"id"`
 	PasswordPayload *PasswordResetRequest `json:"passwordPayload"`
 }
 
 type WithdrawRequest struct {
-	Email string `json:"email" validate:"required,email"`
+	ID string `json:"id" validate:"required"`
 }
 
 type PasswordEntity struct {
-	Email        string
+	ID           string
 	HashPassword string
 	Salt         string
 	Role         model.UserRoles
