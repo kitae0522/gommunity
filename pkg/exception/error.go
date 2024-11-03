@@ -4,18 +4,23 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func CreateErrorRes(ctx *fiber.Ctx, statusCode int, errMessage string, err interface{}) error {
-	var errorDetail interface{}
+func CreateErrorResponse(ctx *fiber.Ctx, statusCode int, errMessage string, err interface{}) error {
+	var errDetail interface{}
 	if e, ok := err.(error); ok {
-		errorDetail = e.Error()
+		errDetail = e.Error()
 	} else {
-		errorDetail = err
+		errDetail = err
 	}
 
-	return ctx.Status(statusCode).JSON(ErrResponseCtx{
+	ctxError := GenerateErrorCtx(statusCode, errMessage, errDetail)
+	return ctx.Status(statusCode).JSON(ctxError)
+}
+
+func GenerateErrorCtx(statusCode int, errMessage string, err interface{}) ErrResponseCtx {
+	return ErrResponseCtx{
 		IsError:    true,
 		StatusCode: statusCode,
 		Message:    errMessage,
-		Error:      errorDetail,
-	})
+		Error:      err,
+	}
 }

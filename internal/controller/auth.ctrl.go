@@ -47,18 +47,18 @@ func (c *AuthController) Restricted(router fiber.Router) {
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	var createUserPayload dto.RegisterRequest
 	if errs := utils.Bind(ctx, &createUserPayload); len(errs) > 0 {
-		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", errs)
+		return exception.CreateErrorResponse(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", errs)
 	}
 
 	err := c.authService.Register(createUserPayload)
 	if err != nil {
 		if _, uniqueErr := model.IsErrUniqueConstraint(err); uniqueErr {
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 회원가입 실패. 중복된 유저가 존재합니다.", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 회원가입 실패. 중복된 유저가 존재합니다.", err)
 		}
 		if err == exception.ErrIncorrectConfirmPassword {
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 회원가입 실패. 패스워드가 일치하지 않습니다.", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 회원가입 실패. 패스워드가 일치하지 않습니다.", err)
 		}
-		return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 회원가입 실패. Repository에서 문제 발생", err)
+		return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 회원가입 실패. Repository에서 문제 발생", err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(dto.DefaultResponse{
@@ -71,18 +71,18 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 func (c *AuthController) Login(ctx *fiber.Ctx) error {
 	var loginPayload dto.LoginRequest
 	if errs := utils.Bind(ctx, &loginPayload); len(errs) > 0 {
-		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", errs)
+		return exception.CreateErrorResponse(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", errs)
 	}
 
 	token, err := c.authService.Login(loginPayload.Email, loginPayload.Password)
 	if err != nil {
 		switch err {
 		case model.ErrNotFound:
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 로그인 실패. 존재하지 않는 사용자입니다.", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 로그인 실패. 존재하지 않는 사용자입니다.", err)
 		case exception.ErrWrongPassword:
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 로그인 실패. 패스워드가 일치하지 않습니다.", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 로그인 실패. 패스워드가 일치하지 않습니다.", err)
 		default:
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 로그인 실패. Repository에서 문제 발생", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 로그인 실패. Repository에서 문제 발생", err)
 		}
 	}
 
@@ -97,7 +97,7 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
 	var passwordResetPayload dto.PasswordResetRequest
 	if errs := utils.Bind(ctx, passwordResetPayload); len(errs) > 0 {
-		return exception.CreateErrorRes(ctx, fiber.StatusBadRequest, "❌ 비밀번호 초기화 실패. Body Binding 과정에서 문제 발생", errs)
+		return exception.CreateErrorResponse(ctx, fiber.StatusBadRequest, "❌ 비밀번호 초기화 실패. Body Binding 과정에서 문제 발생", errs)
 	}
 
 	resetEntity := dto.PasswordResetEntity{
@@ -108,11 +108,11 @@ func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
 	if err := c.authService.PasswordReset(resetEntity); err != nil {
 		switch err {
 		case model.ErrNotFound:
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. 존재하지 않는 사용자입니다.", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. 존재하지 않는 사용자입니다.", err)
 		case exception.ErrWrongPassword:
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. 패스워드가 일치하지 않습니다.", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. 패스워드가 일치하지 않습니다.", err)
 		default:
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. Repository에서 문제 발생", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. Repository에서 문제 발생", err)
 		}
 	}
 
@@ -130,11 +130,11 @@ func (c *AuthController) Withdraw(ctx *fiber.Ctx) error {
 	if err := c.authService.Withdraw(withdrawPayload.Email); err != nil {
 		switch err {
 		case model.ErrNotFound:
-			return exception.CreateErrorRes(ctx, fiber.StatusNotFound, "❌ 유저 탈퇴 실패. 존재하지 않는 사용자입니다.", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusNotFound, "❌ 유저 탈퇴 실패. 존재하지 않는 사용자입니다.", err)
 		case exception.ErrUnableToDeleteUser:
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 유저 탈퇴 실패. 유저를 삭제할 수 없습니다.", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 유저 탈퇴 실패. 유저를 삭제할 수 없습니다.", err)
 		default:
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 유저 탈퇴 실패. Repository에서 문제 발생", err)
+			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 유저 탈퇴 실패. Repository에서 문제 발생", err)
 		}
 	}
 
