@@ -12,9 +12,7 @@ import (
 func JWTMiddleware(ctx *fiber.Ctx) error {
 	authHeader := strings.Split(ctx.Get("Authorization"), " ")
 	if len(authHeader) != 2 {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Unauthorized",
-		})
+		return exception.CreateErrorRes(ctx, fiber.StatusUnauthorized, "❌ 접근 권한이 없습니다.", exception.ErrUnauthorizedRequest)
 	}
 	token := authHeader[1]
 

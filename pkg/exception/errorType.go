@@ -3,6 +3,7 @@ package exception
 import "errors"
 
 var (
+	ErrUnauthorizedRequest      = errors.New("unauthorized request")
 	ErrInvalidParameter         = errors.New("invalid parameter")
 	ErrIncorrectConfirmPassword = errors.New("incorrect confirm password")
 	ErrWrongPassword            = errors.New("wrong password")
