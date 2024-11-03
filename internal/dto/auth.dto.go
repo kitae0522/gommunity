@@ -2,13 +2,13 @@ package dto
 
 import "github.com/kitae0522/gommunity/internal/model"
 
-type DefaultRes struct {
+type DefaultResponse struct {
 	IsError    bool   `json:"isError"`
 	StatusCode int    `json:"statusCode"`
 	Message    string `json:"message"`
 }
 
-type AuthRegisterReq struct {
+type AuthRegisterRequest struct {
 	Handle          string `json:"handle" validate:"required"`
 	Name            string `json:"name" validate:"required"`
 	Password        string `json:"password" validate:"required"`
@@ -16,12 +16,12 @@ type AuthRegisterReq struct {
 	Email           string `json:"email" validate:"required"`
 }
 
-type AuthLoginReq struct {
+type AuthLoginRequest struct {
 	Email    string `json:"email" validate:"required"`
 	Password string `json:"password" validate:"required"`
 }
 
-type AuthLoginRes struct {
+type AuthLoginResponse struct {
 	IsError    bool   `json:"isError"`
 	StatusCode int    `json:"statusCode"`
 	Message    string `json:"message"`
@@ -33,19 +33,19 @@ type AuthHandleResetEntity struct {
 	Handle string
 }
 
-type AuthPasswordResetReq struct {
+type AuthPasswordResetRequest struct {
 	OldPassword        string `json:"oldPassword" validate:"required"`
 	NewPassword        string `json:"newPassword" validate:"required"`
 	NewPasswordConfirm string `json:"newPasswordConfirm" validate:"required"`
 }
 
 type AuthPasswordResetEntity struct {
-	Email           string `json:"email" validate:"requierd"`
-	PasswordPayload AuthPasswordResetReq
+	Email           string                    `json:"email" validate:"required"`
+	PasswordPayload *AuthPasswordResetRequest `json:"passwordPayload"`
 }
 
-type AuthWithdrawEntity struct {
-	Email string `json:"email" validate:"requierd"`
+type AuthWithdrawRequest struct {
+	Email string `json:"email" validate:"required"`
 }
 
 type PasswordEntity struct {
