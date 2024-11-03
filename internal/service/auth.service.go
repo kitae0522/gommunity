@@ -15,7 +15,7 @@ func NewAuthService(repo *repository.AuthRepository) *AuthService {
 	return &AuthService{authRepo: repo}
 }
 
-func (s *AuthService) Register(req dto.AuthRegisterReq) error {
+func (s *AuthService) Register(req dto.AuthRegisterRequest) error {
 	// 1. Check if password and confirmation password match
 	if err := s.comprePassword(req.Password, req.PasswordConfirm); err != nil {
 		return err
