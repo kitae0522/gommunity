@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 
+	"github.com/kitae0522/gommunity/internal/controller"
 	"github.com/kitae0522/gommunity/internal/model"
 )
 
@@ -34,6 +35,6 @@ func main() {
 		}
 	}()
 
-	// controller.EnrollRouter(app, dbconn)
+	controller.EnrollRouter(app, dbconn)
 	log.Fatal(app.Listen(port))
 }
