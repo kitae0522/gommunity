@@ -10,10 +10,11 @@ import (
 
 const JWTExpirationInSec = 60 * 60 * 24 * 7
 
-func NewToken(userRole, userUUID string, secretKey []byte) (string, error) {
+func NewToken(userRole, userEmail string, secretKey []byte) (string, error) {
 	expiration := time.Duration(JWTExpirationInSec) * time.Second
 	claims := jwt.MapClaims{
-		"uuid":      userUUID,
+		"role":      userRole,
+		"email":     userEmail,
 		"expiredAt": time.Now().Add(expiration).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -33,8 +34,8 @@ func ParseJWT(jwtToken string) (string, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		if uuid, ok := claims["uuid"].(string); ok {
-			return uuid, nil
+		if email, ok := claims["email"].(string); ok {
+			return email, nil
 		}
 	}
 	return "", exception.ErrInvalidTokenClaims
