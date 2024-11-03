@@ -38,10 +38,6 @@ func Bind(ctx *fiber.Ctx, targetStruct interface{}) []exception.ErrValidateResul
 		errs = append(errs, *err)
 	}
 
-	if err := parsePayload(targetStruct, ctx.BodyParser, "Body"); err != nil {
-		errs = append(errs, *err)
-	}
-
 	if ctx.GetReqHeaders()["Content-Type"] != nil && ctx.GetReqHeaders()["Content-Type"][0] == "application/json" {
 		if err := parsePayload(targetStruct, ctx.BodyParser, "Body"); err != nil {
 			errs = append(errs, *err)
