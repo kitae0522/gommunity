@@ -3,22 +3,16 @@ package utils
 import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/kitae0522/gommunity/pkg/exception"
 )
-
-type ValidateErrRes struct {
-	IsError bool
-	Field   string
-	Tag     string
-	Value   interface{}
-}
 
 var validate *validator.Validate = validator.New()
 
-func Validate(i interface{}) []ValidateErrRes {
-	errlog := make([]ValidateErrRes, 0)
+func Validate(i interface{}) []exception.ErrValidateResult {
+	errlog := make([]exception.ErrValidateResult, 0)
 	if errs := validate.Struct(i); errs != nil {
 		for _, err := range errs.(validator.ValidationErrors) {
-			errlog = append(errlog, ValidateErrRes{
+			errlog = append(errlog, exception.ErrValidateResult{
 				IsError: true,
 				Field:   err.Field(),
 				Tag:     err.Tag(),
@@ -29,20 +23,42 @@ func Validate(i interface{}) []ValidateErrRes {
 	return errlog
 }
 
-func Bind(ctx *fiber.Ctx, targetStruct interface{}) []ValidateErrRes {
-	// BodyParse
-	if err := ctx.BodyParser(targetStruct); err != nil {
-		return []ValidateErrRes{{
+func Bind(ctx *fiber.Ctx, targetStruct interface{}) []exception.ErrValidateResult {
+	errs := make([]exception.ErrValidateResult, 0)
+
+	if err := parsePayload(targetStruct, ctx.ParamsParser, "Params"); err != nil {
+		errs = append(errs, *err)
+	}
+
+	if err := parsePayload(targetStruct, ctx.ReqHeaderParser, "Headers"); err != nil {
+		errs = append(errs, *err)
+	}
+
+	if err := parsePayload(targetStruct, ctx.QueryParser, "Query"); err != nil {
+		errs = append(errs, *err)
+	}
+
+	if err := parsePayload(targetStruct, ctx.BodyParser, "Body"); err != nil {
+		errs = append(errs, *err)
+	}
+
+	if ctx.GetReqHeaders()["Content-Type"] != nil && ctx.GetReqHeaders()["Content-Type"][0] == "application/json" {
+		if err := parsePayload(targetStruct, ctx.BodyParser, "Body"); err != nil {
+			errs = append(errs, *err)
+		}
+	}
+
+	errs = append(errs, Validate(targetStruct)...)
+	return errs
+}
+
+func parsePayload(target interface{}, parseFunc func(interface{}) error, fieldName string) *exception.ErrValidateResult {
+	if err := parseFunc(target); err != nil {
+		return &exception.ErrValidateResult{
 			IsError: true,
-			Field:   "Body",
+			Field:   fieldName,
 			Value:   err.Error(),
-		}}
+		}
 	}
-
-	// Validate
-	if err := Validate(targetStruct); len(err) != 0 {
-		return err
-	}
-
 	return nil
 }
