@@ -138,9 +138,9 @@ func (c *AuthController) Withdraw(ctx *fiber.Ctx) error {
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.DefaultResponse{
+	return ctx.Status(fiber.StatusNoContent).JSON(dto.DefaultResponse{
 		IsError:    false,
-		StatusCode: fiber.StatusOK,
+		StatusCode: fiber.StatusNoContent,
 		Message:    "✅ 유저 탈퇴 완료",
 	})
 }
