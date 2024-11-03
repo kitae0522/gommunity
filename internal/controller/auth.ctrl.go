@@ -130,7 +130,7 @@ func (c *AuthController) Withdraw(ctx *fiber.Ctx) error {
 	if err := c.authService.Withdraw(withdrawPayload.Email); err != nil {
 		switch err {
 		case model.ErrNotFound:
-			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 유저 탈퇴 실패. 존재하지 않는 사용자입니다.", err)
+			return exception.CreateErrorRes(ctx, fiber.StatusNotFound, "❌ 유저 탈퇴 실패. 존재하지 않는 사용자입니다.", err)
 		case exception.ErrUnableToDeleteUser:
 			return exception.CreateErrorRes(ctx, fiber.StatusInternalServerError, "❌ 유저 탈퇴 실패. 유저를 삭제할 수 없습니다.", err)
 		default:
