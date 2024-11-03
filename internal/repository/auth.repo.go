@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 
+	"github.com/kitae0522/gommunity/internal/dto"
 	"github.com/kitae0522/gommunity/internal/model"
 	"github.com/kitae0522/gommunity/pkg/crypt"
-	"github.com/kitae0522/gommunity/pkg/dto"
 	"github.com/kitae0522/gommunity/pkg/utils"
 )
 

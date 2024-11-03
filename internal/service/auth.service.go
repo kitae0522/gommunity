@@ -1,9 +1,9 @@
 package service
 
 import (
+	"github.com/kitae0522/gommunity/internal/dto"
 	"github.com/kitae0522/gommunity/internal/repository"
 	"github.com/kitae0522/gommunity/pkg/crypt"
-	"github.com/kitae0522/gommunity/pkg/dto"
 	"github.com/kitae0522/gommunity/pkg/exception"
 )
 

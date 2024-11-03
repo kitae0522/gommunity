@@ -5,11 +5,11 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	"github.com/kitae0522/gommunity/internal/dto"
 	"github.com/kitae0522/gommunity/internal/middleware"
 	"github.com/kitae0522/gommunity/internal/model"
 	"github.com/kitae0522/gommunity/internal/repository"
 	"github.com/kitae0522/gommunity/internal/service"
-	"github.com/kitae0522/gommunity/pkg/dto"
 	"github.com/kitae0522/gommunity/pkg/exception"
 	"github.com/kitae0522/gommunity/pkg/utils"
 )
