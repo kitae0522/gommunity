@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/kitae0522/gommunity/internal/config"
 	"github.com/kitae0522/gommunity/internal/dto"
 	"github.com/kitae0522/gommunity/internal/model"
 	"github.com/kitae0522/gommunity/internal/repository"
@@ -47,7 +48,7 @@ func (s *AuthService) Login(email, password string) (string, *exception.ErrRespo
 		return "", exception.GenerateErrorCtx(fiber.StatusBadRequest, "❌ 로그인 실패. 패스워드가 일치하지 않습니다.", err)
 	}
 
-	token, err := crypt.NewToken(string(passwordInfo.Role), passwordInfo.ID, []byte("tempSecret"))
+	token, err := crypt.NewToken(string(passwordInfo.Role), passwordInfo.ID, []byte(config.Envs.JWTSecret))
 	if err != nil {
 		return "", exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 로그인 실패. 토큰 생성 중 문제가 발생했습니다.", err)
 	}
