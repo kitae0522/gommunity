@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/kitae0522/gommunity/pkg/exception"
@@ -23,7 +25,7 @@ func Validate(i interface{}) []exception.ErrValidateResult {
 	return errlog
 }
 
-func Bind(ctx *fiber.Ctx, targetStruct interface{}) []exception.ErrValidateResult {
+func Bind(ctx *fiber.Ctx, targetStruct interface{}, actionMessage string) *exception.ErrResponseCtx {
 	errs := make([]exception.ErrValidateResult, 0)
 
 	if err := parsePayload(targetStruct, ctx.ParamsParser, "Params"); err != nil {
@@ -45,7 +47,9 @@ func Bind(ctx *fiber.Ctx, targetStruct interface{}) []exception.ErrValidateResul
 	}
 
 	errs = append(errs, Validate(targetStruct)...)
-	return errs
+	errMessage := fmt.Sprintf("❌ %s 실패. Body Binding 과정에서 문제 발생", actionMessage)
+	ctxResponse := exception.GenerateErrorCtx(fiber.StatusBadRequest, errMessage, errs)
+	return ctxResponse
 }
 
 func parsePayload(target interface{}, parseFunc func(interface{}) error, fieldName string) *exception.ErrValidateResult {

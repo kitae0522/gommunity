@@ -8,7 +8,6 @@ import (
 	"github.com/kitae0522/gommunity/internal/model"
 	"github.com/kitae0522/gommunity/internal/repository"
 	"github.com/kitae0522/gommunity/internal/service"
-	"github.com/kitae0522/gommunity/pkg/exception"
 	"github.com/kitae0522/gommunity/pkg/utils"
 )
 
@@ -48,8 +47,8 @@ func (c *ThreadController) CreateThread(ctx *fiber.Ctx) error {
 	var createThreadPayload dto.CreateThreadRequest
 	createThreadPayload.UserID = middleware.GetIdFromMiddleware(ctx)
 
-	if errs := utils.Bind(ctx, &createThreadPayload); len(errs) > 0 {
-		return exception.CreateErrorResponse(ctx, fiber.StatusBadRequest, "❌ 쓰레드 생성 실패. Body Binding 과정에서 문제 발생", errs)
+	if err := utils.Bind(ctx, &createThreadPayload, "쓰레드 생성"); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
 	thread, err := c.threadService.CreateThread(&createThreadPayload)
@@ -81,8 +80,8 @@ func (c *ThreadController) ListThread(ctx *fiber.Ctx) error {
 
 func (c *ThreadController) ListThreadByHandle(ctx *fiber.Ctx) error {
 	var listThreadPayload dto.ListThreadByHandleRequest
-	if errs := utils.Bind(ctx, &listThreadPayload); len(errs) > 0 {
-		return exception.CreateErrorResponse(ctx, fiber.StatusBadRequest, "❌ 쓰레드 생성 실패. Body Binding 과정에서 문제 발생", errs)
+	if err := utils.Bind(ctx, &listThreadPayload, "모든 쓰레드 조회"); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
 	threads, err := c.threadService.ListThreadByHandle(listThreadPayload.Handle)
@@ -101,8 +100,8 @@ func (c *ThreadController) ListThreadByHandle(ctx *fiber.Ctx) error {
 
 func (c *ThreadController) GetThreadByID(ctx *fiber.Ctx) error {
 	var getThreadPayload dto.GetThreadByIDRequest
-	if errs := utils.Bind(ctx, &getThreadPayload); len(errs) > 0 {
-		return exception.CreateErrorResponse(ctx, fiber.StatusBadRequest, "❌ 쓰레드 생성 실패. Body Binding 과정에서 문제 발생", errs)
+	if err := utils.Bind(ctx, &getThreadPayload, "쓰레드 조회"); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
 	thread, err := c.threadService.GetThreadByID(getThreadPayload.ThreadID)

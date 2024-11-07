@@ -8,7 +8,6 @@ import (
 	"github.com/kitae0522/gommunity/internal/model"
 	"github.com/kitae0522/gommunity/internal/repository"
 	"github.com/kitae0522/gommunity/internal/service"
-	"github.com/kitae0522/gommunity/pkg/exception"
 	"github.com/kitae0522/gommunity/pkg/utils"
 )
 
@@ -46,8 +45,8 @@ func (c *AuthController) Restricted(router fiber.Router) {
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	var createUserPayload dto.RegisterRequest
-	if errs := utils.Bind(ctx, &createUserPayload); len(errs) > 0 {
-		return exception.CreateErrorResponse(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", errs)
+	if err := utils.Bind(ctx, &createUserPayload, "회원가입"); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
 	err := c.authService.Register(createUserPayload)
@@ -64,8 +63,8 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 
 func (c *AuthController) Login(ctx *fiber.Ctx) error {
 	var loginPayload dto.LoginRequest
-	if errs := utils.Bind(ctx, &loginPayload); len(errs) > 0 {
-		return exception.CreateErrorResponse(ctx, fiber.StatusBadRequest, "❌ 회원가입 실패. Body Binding 과정에서 문제 발생", errs)
+	if err := utils.Bind(ctx, &loginPayload, "로그인"); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
 	token, err := c.authService.Login(loginPayload.Email, loginPayload.Password)
@@ -83,8 +82,8 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 
 func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
 	var passwordResetPayload dto.PasswordResetRequest
-	if errs := utils.Bind(ctx, &passwordResetPayload); len(errs) > 0 {
-		return exception.CreateErrorResponse(ctx, fiber.StatusBadRequest, "❌ 비밀번호 초기화 실패. Body Binding 과정에서 문제 발생", errs)
+	if err := utils.Bind(ctx, &passwordResetPayload, "비밀번호 초기화"); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
 	resetEntity := dto.PasswordResetEntity{
