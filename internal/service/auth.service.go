@@ -1,7 +1,9 @@
 package service
 
 import (
+	"github.com/gofiber/fiber/v2"
 	"github.com/kitae0522/gommunity/internal/dto"
+	"github.com/kitae0522/gommunity/internal/model"
 	"github.com/kitae0522/gommunity/internal/repository"
 	"github.com/kitae0522/gommunity/pkg/crypt"
 	"github.com/kitae0522/gommunity/pkg/exception"
@@ -15,36 +17,39 @@ func NewAuthService(repo *repository.AuthRepository) *AuthService {
 	return &AuthService{authRepo: repo}
 }
 
-func (s *AuthService) Register(req dto.RegisterRequest) error {
-	// 1. Check if password and confirmation password match
-	if err := s.comprePassword(req.Password, req.PasswordConfirm); err != nil {
-		return err
+func (s *AuthService) Register(req dto.RegisterRequest) *exception.ErrResponseCtx {
+	if err := s.comparePassword(req.Password, req.PasswordConfirm); err != nil {
+		return exception.GenerateErrorCtx(fiber.StatusBadRequest, "❌ 회원가입 실패. 패스워드가 일치하지 않습니다.", err)
 	}
 
-	// 2. Create User
 	if _, err := s.authRepo.CreateUser(req); err != nil {
-		return err
+		if _, uniqueErr := model.IsErrUniqueConstraint(err); uniqueErr {
+			return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 회원가입 실패. 중복된 유저가 존재합니다.", err)
+		}
+		return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 회원가입 실패. Repository에서 문제 발생", err)
 	}
 
 	return nil
 }
 
-func (s *AuthService) Login(email, password string) (string, error) {
-	// 1. Get PasswordInfo
+func (s *AuthService) Login(email, password string) (string, *exception.ErrResponseCtx) {
 	passwordInfo, err := s.authRepo.GetUserPasswordByEmail(email)
 	if err != nil {
-		return "", err
+		switch err {
+		case model.ErrNotFound:
+			return "", exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 로그인 실패. 존재하지 않는 사용자입니다.", err)
+		default:
+			return "", exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 로그인 실패. Repository에서 문제 발생", err)
+		}
 	}
 
-	// 2. Check if password field and password payload match
 	if !crypt.VerifyPassword(passwordInfo.HashPassword, password, passwordInfo.Salt) {
-		return "", exception.ErrWrongPassword
+		return "", exception.GenerateErrorCtx(fiber.StatusBadRequest, "❌ 로그인 실패. 패스워드가 일치하지 않습니다.", err)
 	}
 
-	// 3. Generate JWT Token
 	token, err := crypt.NewToken(string(passwordInfo.Role), passwordInfo.ID, []byte("tempSecret"))
 	if err != nil {
-		return "", err
+		return "", exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 로그인 실패. 토큰 생성 중 문제가 발생했습니다.", err)
 	}
 
 	return token, nil
@@ -57,41 +62,48 @@ func (s *AuthService) HandleReset(req dto.HandleResetEntity) error {
 	return nil
 }
 
-func (s *AuthService) PasswordReset(req dto.PasswordResetEntity) error {
-	// 1. Compare NewPassword, NewPasswordConfirm
-	if err := s.comprePassword(req.PasswordPayload.NewPassword, req.PasswordPayload.NewPasswordConfirm); err != nil {
-		return err
+func (s *AuthService) PasswordReset(req dto.PasswordResetEntity) *exception.ErrResponseCtx {
+	if err := s.comparePassword(req.PasswordPayload.NewPassword, req.PasswordPayload.NewPasswordConfirm); err != nil {
+		return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. 패스워드가 일치하지 않습니다.", err)
 	}
 
-	// 2. Get UserPassword
 	passwordInfo, err := s.authRepo.GetUserPasswordByID(req.ID)
 	if err != nil {
-		return err
+		switch err {
+		case model.ErrNotFound:
+			return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. 존재하지 않는 사용자입니다.", err)
+		default:
+			return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. Repository에서 문제 발생", err)
+		}
 	}
 
-	// 3. Compare Password
 	if !crypt.VerifyPassword(passwordInfo.HashPassword, req.PasswordPayload.OldPassword, passwordInfo.Salt) {
-		return exception.ErrWrongPassword
+		return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. 패스워드가 일치하지 않습니다.", err)
 	}
 
-	// 4. Update UserPassword
 	if err := s.authRepo.UpdateUserPassword(passwordInfo.ID, passwordInfo.Salt, req.PasswordPayload.NewPassword); err != nil {
-		return err
+		return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. Repository에서 문제 발생", err)
 	}
 
 	return nil
 }
 
-func (s *AuthService) Withdraw(ID string) error {
+func (s *AuthService) Withdraw(ID string) *exception.ErrResponseCtx {
 	if ok, err := s.authRepo.DeleteUser(ID); err != nil {
-		return err
+		switch err {
+		case model.ErrNotFound:
+			return exception.GenerateErrorCtx(fiber.StatusNotFound, "❌ 유저 탈퇴 실패. 존재하지 않는 사용자입니다.", err)
+		default:
+			return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 유저 탈퇴 실패. Repository에서 문제 발생", err)
+		}
 	} else if !ok {
-		return exception.ErrUnableToDeleteUser
+		return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 유저 탈퇴 실패. 유저를 삭제할 수 없습니다.", err)
 	}
+
 	return nil
 }
 
-func (s *AuthService) comprePassword(password, confirmPassword string) error {
+func (s *AuthService) comparePassword(password, confirmPassword string) error {
 	if password != confirmPassword {
 		return exception.ErrIncorrectConfirmPassword
 	}

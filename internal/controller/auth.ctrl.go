@@ -52,13 +52,7 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 
 	err := c.authService.Register(createUserPayload)
 	if err != nil {
-		if _, uniqueErr := model.IsErrUniqueConstraint(err); uniqueErr {
-			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 회원가입 실패. 중복된 유저가 존재합니다.", err)
-		}
-		if err == exception.ErrIncorrectConfirmPassword {
-			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 회원가입 실패. 패스워드가 일치하지 않습니다.", err)
-		}
-		return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 회원가입 실패. Repository에서 문제 발생", err)
+		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(dto.DefaultResponse{
@@ -76,14 +70,7 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 
 	token, err := c.authService.Login(loginPayload.Email, loginPayload.Password)
 	if err != nil {
-		switch err {
-		case model.ErrNotFound:
-			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 로그인 실패. 존재하지 않는 사용자입니다.", err)
-		case exception.ErrWrongPassword:
-			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 로그인 실패. 패스워드가 일치하지 않습니다.", err)
-		default:
-			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 로그인 실패. Repository에서 문제 발생", err)
-		}
+		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.LoginResponse{
@@ -106,14 +93,7 @@ func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.authService.PasswordReset(resetEntity); err != nil {
-		switch err {
-		case model.ErrNotFound:
-			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. 존재하지 않는 사용자입니다.", err)
-		case exception.ErrWrongPassword:
-			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. 패스워드가 일치하지 않습니다.", err)
-		default:
-			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 비밀번호 초기화 실패. Repository에서 문제 발생", err)
-		}
+		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.DefaultResponse{
@@ -128,14 +108,7 @@ func (c *AuthController) Withdraw(ctx *fiber.Ctx) error {
 	withdrawPayload.ID = middleware.GetIdFromMiddleware(ctx)
 
 	if err := c.authService.Withdraw(withdrawPayload.ID); err != nil {
-		switch err {
-		case model.ErrNotFound:
-			return exception.CreateErrorResponse(ctx, fiber.StatusNotFound, "❌ 유저 탈퇴 실패. 존재하지 않는 사용자입니다.", err)
-		case exception.ErrUnableToDeleteUser:
-			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 유저 탈퇴 실패. 유저를 삭제할 수 없습니다.", err)
-		default:
-			return exception.CreateErrorResponse(ctx, fiber.StatusInternalServerError, "❌ 유저 탈퇴 실패. Repository에서 문제 발생", err)
-		}
+		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.DefaultResponse{
