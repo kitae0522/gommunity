@@ -13,6 +13,8 @@ type Config struct {
 	RedisHost              string
 	RedisPassword          string
 	RedisDB                int64
+	RedisInteractionAmount int64
+	RedisInteractionCount  int64
 }
 
 var Envs = initConfig()
@@ -26,6 +28,8 @@ func initConfig() Config {
 		RedisHost:              getEnv("REDIS_HOST", "tempHost"),
 		RedisPassword:          getEnv("REDIS_PASSWORD", "tempPassword"),
 		RedisDB:                getEnvAsInt("REDIS_DB", 0),
+		RedisInteractionAmount: getEnvAsInt("REDIS_ITR_AMOUNT", 10),
+		RedisInteractionCount:  getEnvAsInt("REDIS_ITR_COUNT", 5),
 	}
 }
 

@@ -34,14 +34,18 @@ func initThreadRouter(router fiber.Router, handler *ThreadController) {
 }
 
 func (c *ThreadController) Accessible(router fiber.Router) {
-	router.Get("/", c.ListThread)
+	router.Get("", c.ListThread)
 	router.Get("/user/:handle", c.ListThreadByHandle)
+	router.Get("/views", c.IncrementViews)
 	router.Get("/:threadID", c.GetThreadByID)
 }
 
 func (c *ThreadController) Restricted(router fiber.Router) {
 	router.Use(middleware.JWTMiddleware)
 	router.Post("/", c.CreateThread)
+	router.Get("/likes", c.IncrementLikes)
+	router.Get("/dislikes", c.IncrementDislikes)
+	router.Delete("/:threadID", c.RemoveThreadByID)
 }
 
 func (c *ThreadController) CreateThread(ctx *fiber.Ctx) error {
@@ -66,7 +70,12 @@ func (c *ThreadController) CreateThread(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) ListThread(ctx *fiber.Ctx) error {
-	threads, err := c.threadService.ListThread(ctx.Context())
+	var listThreadPayload dto.ListThreadRequest
+	if err := utils.Bind(ctx, &listThreadPayload, "전체 쓰레드 조회"); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
+	}
+
+	threads, err := c.threadService.ListThread(ctx.Context(), listThreadPayload.PageNumber, listThreadPayload.PageSize)
 	if err != nil {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
@@ -118,8 +127,89 @@ func (c *ThreadController) GetThreadByID(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(dto.GetThreadByIDResponse{
 		IsError:    false,
 		StatusCode: fiber.StatusOK,
-		Message:    "✅ 모든 쓰레드 조회 완료",
+		Message:    "✅ 쓰레드 조회 완료",
 		Thread:     thread,
 		SubThread:  comments,
+	})
+}
+
+func (c *ThreadController) RemoveThreadByID(ctx *fiber.Ctx) error {
+	var removeThreadPayload dto.RemoveThreadByIDRequest
+	removeThreadPayload.ID = middleware.GetIdFromMiddleware(ctx)
+	if err := utils.Bind(ctx, &removeThreadPayload, "쓰레드 삭제"); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
+	}
+
+	if err := c.threadService.RemoveThreadByID(ctx.Context(), removeThreadPayload.ID, removeThreadPayload.ThreadID); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dto.DefaultResponse{
+		IsError:    false,
+		StatusCode: fiber.StatusOK,
+		Message:    "✅ 쓰레드 삭제 완료",
+	})
+}
+
+func (c *ThreadController) IncrementViews(ctx *fiber.Ctx) error {
+	threadID := ctx.QueryInt("threadID", 0)
+	if threadID == 0 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.DefaultResponse{
+			IsError:    true,
+			StatusCode: fiber.StatusBadRequest,
+			Message:    "❌ 쓰레드 조회수 증가 실패",
+		})
+	}
+
+	if err := c.threadService.IncrementViews(ctx.Context(), threadID); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
+	}
+
+	return ctx.Status(fiber.StatusNoContent).JSON(dto.DefaultResponse{
+		IsError:    false,
+		StatusCode: fiber.StatusNoContent,
+		Message:    "✅ 쓰레드 조회수 증가 완료",
+	})
+}
+
+func (c *ThreadController) IncrementLikes(ctx *fiber.Ctx) error {
+	threadID := ctx.QueryInt("threadID", 0)
+	if threadID == 0 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.DefaultResponse{
+			IsError:    true,
+			StatusCode: fiber.StatusBadRequest,
+			Message:    "❌ 쓰레드 좋아요 증가 실패",
+		})
+	}
+
+	if err := c.threadService.IncrementLikes(ctx.Context(), threadID); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
+	}
+
+	return ctx.Status(fiber.StatusNoContent).JSON(dto.DefaultResponse{
+		IsError:    false,
+		StatusCode: fiber.StatusNoContent,
+		Message:    "✅ 쓰레드 좋아요 증가 완료",
+	})
+}
+
+func (c *ThreadController) IncrementDislikes(ctx *fiber.Ctx) error {
+	threadID := ctx.QueryInt("threadID", 0)
+	if threadID == 0 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.DefaultResponse{
+			IsError:    true,
+			StatusCode: fiber.StatusBadRequest,
+			Message:    "❌ 쓰레드 싫어요 증가 실패",
+		})
+	}
+
+	if err := c.threadService.IncrementDislikes(ctx.Context(), threadID); err != nil {
+		return ctx.Status(err.StatusCode).JSON(err)
+	}
+
+	return ctx.Status(fiber.StatusNoContent).JSON(dto.DefaultResponse{
+		IsError:    false,
+		StatusCode: fiber.StatusNoContent,
+		Message:    "✅ 쓰레드 싫어요 증가 완료",
 	})
 }

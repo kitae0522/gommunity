@@ -26,10 +26,17 @@ func (r *ThreadRepository) CreateThread(ctx context.Context, req *dto.CreateThre
 	return thread, err
 }
 
-func (r *ThreadRepository) ListThread(ctx context.Context) ([]model.ThreadModel, error) {
+func (r *ThreadRepository) ListThread(ctx context.Context, pageNumber int, pageSize int) ([]model.ThreadModel, error) {
+	if pageNumber <= 0 {
+		pageNumber = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+	offset := (pageNumber - 1) * pageSize
 	listThread, err := r.client.Thread.FindMany(
 		model.Thread.ParentThread.IsNull(),
-	).Exec(ctx)
+	).Take(pageSize).Skip(offset).Exec(ctx)
 	return listThread, err
 }
 
@@ -75,7 +82,58 @@ func (r *ThreadRepository) CommentsByID(ctx context.Context, threadID int) ([]mo
 	return commentThreads, err
 }
 
-func (r *ThreadRepository) LinkRelation(ctx context.Context, txns []model.PrismaTransaction) error {
+func (r *ThreadRepository) RemoveThreadByID(ctx context.Context, userID string, threadID int) (bool, error) {
+	_, err := r.client.Thread.FindUnique(
+		model.Thread.ID.Equals(threadID),
+	).Delete().Exec(ctx)
+
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *ThreadRepository) IncrementViews(ctx context.Context, threadID int, amount int) model.ThreadUniqueTxResult {
+	return r.client.Thread.FindUnique(
+		model.Thread.ID.Equals(threadID),
+	).Update(
+		model.Thread.Views.Increment(amount),
+	).Tx()
+}
+
+func (r *ThreadRepository) IncrementLikes(ctx context.Context, threadID int, amount int) model.ThreadUniqueTxResult {
+	return r.client.Thread.FindUnique(
+		model.Thread.ID.Equals(threadID),
+	).Update(
+		model.Thread.Likes.Increment(amount),
+	).Tx()
+}
+
+func (r *ThreadRepository) IncrementDislikes(ctx context.Context, threadID int, amount int) model.ThreadUniqueTxResult {
+	return r.client.Thread.FindUnique(
+		model.Thread.ID.Equals(threadID),
+	).Update(
+		model.Thread.Dislikes.Increment(amount),
+	).Tx()
+}
+
+func (r *ThreadRepository) DecrementLikes(ctx context.Context, threadID int, amount int) model.ThreadUniqueTxResult {
+	return r.client.Thread.FindUnique(
+		model.Thread.ID.Equals(threadID),
+	).Update(
+		model.Thread.Likes.Decrement(amount),
+	).Tx()
+}
+
+func (r *ThreadRepository) DecrementDislikes(ctx context.Context, threadID int, amount int) model.ThreadUniqueTxResult {
+	return r.client.Thread.FindUnique(
+		model.Thread.ID.Equals(threadID),
+	).Update(
+		model.Thread.Dislikes.Decrement(amount),
+	).Tx()
+}
+
+func (r *ThreadRepository) RunTransaction(ctx context.Context, txns []model.PrismaTransaction) error {
 	if err := r.client.Prisma.Transaction(txns...).Exec(ctx); err != nil {
 		return err
 	}

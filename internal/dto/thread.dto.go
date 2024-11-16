@@ -21,6 +21,11 @@ type CreateThreadReponse struct {
 	Thread     model.ThreadModel `json:"thread"`
 }
 
+type ListThreadRequest struct {
+	PageNumber int `query:"pageNumber"`
+	PageSize   int `query:"pageSize"`
+}
+
 type ListThreadResponse struct {
 	IsError    bool                `json:"isError"`
 	StatusCode int                 `json:"statusCode"`
@@ -50,4 +55,9 @@ type GetThreadByIDResponse struct {
 	Message    string              `json:"message"`
 	Thread     *model.ThreadModel  `json:"thread"`
 	SubThread  []model.ThreadModel `json:"subThread"`
+}
+
+type RemoveThreadByIDRequest struct {
+	ID       string `json:"id" validate:"required"`
+	ThreadID int    `params:"threadID" validate:"required"`
 }

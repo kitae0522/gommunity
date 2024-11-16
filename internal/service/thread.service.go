@@ -2,22 +2,24 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 
+	"github.com/kitae0522/gommunity/internal/config"
 	"github.com/kitae0522/gommunity/internal/dto"
 	"github.com/kitae0522/gommunity/internal/model"
 	"github.com/kitae0522/gommunity/internal/repository"
 	"github.com/kitae0522/gommunity/pkg/exception"
+	"github.com/kitae0522/gommunity/pkg/utils"
 )
 
 type ThreadService struct {
 	threadRepo *repository.ThreadRepository
 	redisCache *redis.Client
+	txnsItr    []model.PrismaTransaction
 }
 
 func NewThreadService(repo *repository.ThreadRepository, rdconn *redis.Client) *ThreadService {
@@ -47,23 +49,46 @@ func (s *ThreadService) CreateThread(ctx context.Context, req *dto.CreateThreadR
 		txns = append(txns, s.threadRepo.LinkPrevThread(ctx, thread.ID, *req.NextThread))
 	}
 
-	if err := s.threadRepo.LinkRelation(ctx, txns); err != nil {
+	if err := s.threadRepo.RunTransaction(ctx, txns); err != nil {
 		return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 생성 실패. Reposioty에서 문제가 발생했습니다.", err)
 	}
+
+	utils.ClearCacheByPattern(s.redisCache, ctx, "thread:list:*")
 
 	return thread, nil
 }
 
-func (s *ThreadService) ListThread(ctx context.Context) ([]model.ThreadModel, *exception.ErrResponseCtx) {
-	threadList, err := s.threadRepo.ListThread(ctx)
+func (s *ThreadService) ListThread(ctx context.Context, pageNumber, pageSize int) ([]model.ThreadModel, *exception.ErrResponseCtx) {
+	threadList, err := s.listThreadFromCache(ctx, pageNumber, pageSize)
+	if err != nil {
+		return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 조회 실패. 캐시하는 과정에서 문제가 발생했습니다.", err)
+	}
+	if threadList != nil {
+		return threadList, nil
+	}
+
+	threadList, err = s.threadRepo.ListThread(ctx, pageNumber, pageSize)
 	if err != nil {
 		return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 조회 실패. Repository에서 문제가 발생했습니다.", err)
 	}
+
+	if err := s.setListThreadToCache(ctx, pageNumber, pageSize, threadList, 5*time.Minute); err != nil {
+		return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 조회 실패. 캐시에 저장하지 못했습니다.", err)
+	}
+
 	return threadList, nil
 }
 
 func (s *ThreadService) ListThreadByHandle(ctx context.Context, handle string) ([]model.ThreadModel, *exception.ErrResponseCtx) {
-	threadList, err := s.threadRepo.ListThreadByHandle(ctx, handle)
+	threadList, err := s.listThreadByHandleFromCache(ctx, handle)
+	if err != nil {
+		return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 조회 실패. 캐시하는 과정에서 문제가 발생했습니다.", err)
+	}
+	if len(threadList) > 0 {
+		return threadList, nil
+	}
+
+	threadList, err = s.threadRepo.ListThreadByHandle(ctx, handle)
 	if err != nil {
 		switch err {
 		case model.ErrNotFound:
@@ -72,6 +97,11 @@ func (s *ThreadService) ListThreadByHandle(ctx context.Context, handle string) (
 			return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 조회 실패. Repository에서 문제가 발생했습니다.", err)
 		}
 	}
+
+	if err := s.setListThreadByHandleToCache(ctx, handle, threadList, 5*time.Minute); err != nil {
+		return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 조회 실패. 캐시에 저장하지 못했습니다.", err)
+	}
+
 	return threadList, nil
 }
 
@@ -114,30 +144,127 @@ func (s *ThreadService) CommentsByID(ctx context.Context, threadID int) ([]model
 	return comments, nil
 }
 
-func (s *ThreadService) getFromCache(ctx context.Context, key string, data interface{}) error {
-	cachedData, err := s.redisCache.Get(ctx, key).Bytes()
-	if err == redis.Nil {
-		return nil
-	} else if err != nil {
-		return err
+func (s *ThreadService) RemoveThreadByID(ctx context.Context, userID string, threadID int) *exception.ErrResponseCtx {
+	thread, err := s.threadRepo.GetThreadByID(ctx, threadID)
+	if err != nil {
+		switch err {
+		case model.ErrNotFound:
+			return exception.GenerateErrorCtx(fiber.StatusNotFound, "❌ 쓰레드 삭제 실패. 존재하지 않는 쓰레드입니다.", err)
+		default:
+			return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 삭제 실패. Repository에서 문제가 발생했습니다.", err)
+		}
 	}
-	return json.Unmarshal(cachedData, data)
+
+	if thread.UserID != userID {
+		return exception.GenerateErrorCtx(fiber.StatusForbidden, "❌ 쓰레드 삭제 실패. 해당 쓰레드를 삭제할 권한이 없습니다.", err)
+	}
+
+	ok, err := s.threadRepo.RemoveThreadByID(ctx, userID, threadID)
+	if err != nil {
+		return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 삭제 실패. Repository에서 문제가 발생했습니다.", err)
+	} else if !ok {
+		return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 삭제 실패. 쓰레드를 삭제할 수 없습니다.", err)
+	}
+
+	utils.ClearCacheByPattern(s.redisCache, ctx, "thread:list:*")
+
+	return nil
 }
 
-func (s *ThreadService) setToCache(ctx context.Context, key string, data interface{}, ttl time.Duration) error {
-	jsonData, err := json.Marshal(data)
+func (s *ThreadService) IncrementViews(ctx context.Context, threadID int) *exception.ErrResponseCtx {
+	return s.incrementInteraction(ctx, threadID, "views")
+}
+
+func (s *ThreadService) IncrementLikes(ctx context.Context, threadID int) *exception.ErrResponseCtx {
+	return s.incrementInteraction(ctx, threadID, "likes")
+}
+
+func (s *ThreadService) IncrementDislikes(ctx context.Context, threadID int) *exception.ErrResponseCtx {
+	return s.incrementInteraction(ctx, threadID, "dislikes")
+}
+
+/*
+이 함수 로직을 조금 까다롭게 짜서 주석을 조금 남겨봄..
+쓰레드 인터렉션은 이렇게 정의됨. -> 조회수, 좋아요, 싫어요, 공유 등등....
+물론 인터렉션 별로 함수를 만들어서 관리해도 좋지만, 재사용성을 위해서 이렇게 제작함.
+또한, DB에 직접적인 접근은 지양하기 위해서 Redis를 Cache의 용도로 사용함.
+Redis 캐시 전략은 Key 값을 각각 인터렉션 별로 구분해서 저장함. (ex. 조회수 -> thread:views:{id}, 좋아요 -> thread:likes:{id}, ...)
+해당 값이 만약 일정 수준에 도달하면 DB에 바로 반영하는 것이 아니라, 트랜잭션으로 만들어 저장함.
+이후 트랜잭션의 양이 일정 수준에 도달하면 DB에 반영함.
+이렇게 구현한 이유는 재사용성을 위해 인터렉션들을 통합해서 하나의 함수로 만들었으므로, 트랜잭션의 상태도 동시에 관리하기 위함임.
+*/
+func (s *ThreadService) incrementInteraction(ctx context.Context, threadID int, interactionField string) *exception.ErrResponseCtx {
+	threadItrAmount, err := s.redisCache.Incr(ctx, fmt.Sprintf("thread:%s:%d", interactionField, threadID)).Result()
 	if err != nil {
-		return err
+		return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 인터렉션 증가 실패. 캐시하는 과정에서 문제가 발생했습니다.", err)
 	}
-	return s.redisCache.Set(ctx, key, jsonData, ttl).Err()
+
+	// 일정 수준 인터렉션 값이 올라가면 DB 트랜잭션에 쿼리 하나 저장
+	if threadItrAmount%config.Envs.RedisInteractionAmount == 0 {
+		txn := s.incrementInteractionMapper(ctx, interactionField, threadID, int(threadItrAmount))
+		s.txnsItr = append(s.txnsItr, txn)
+		return nil
+	}
+
+	// 일정 트랜잭션 수에 도달하면 한번에 DB Push
+	if len(s.txnsItr) >= int(config.Envs.RedisInteractionCount) {
+		if err := s.threadRepo.RunTransaction(ctx, s.txnsItr); err != nil {
+			return exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 인터렉션 증가 실패. Reposioty에서 문제가 발생했습니다.", err)
+		}
+
+		// DB Push가 마무리 되었다면 트랜잭션 및 캐시 초기화
+		s.txnsItr = make([]model.PrismaTransaction, 0)
+		utils.ClearCacheByPattern(s.redisCache, ctx, fmt.Sprintf("thread:%s:%d", interactionField, threadID))
+	}
+
+	return nil
+}
+
+func (s *ThreadService) incrementInteractionMapper(ctx context.Context, interaction string, threadID int, amount int) model.PrismaTransaction {
+	userInteractions := []struct {
+		field         string
+		incrementFunc func(context.Context, int, int) model.ThreadUniqueTxResult
+	}{
+		{"views", s.threadRepo.IncrementViews},
+		{"likes", s.threadRepo.IncrementLikes},
+		{"dislikes", s.threadRepo.IncrementDislikes},
+	}
+
+	for _, itraction := range userInteractions {
+		if itraction.field == interaction {
+			return itraction.incrementFunc(ctx, threadID, amount)
+		}
+	}
+
+	return nil
+}
+
+func (s *ThreadService) listThreadFromCache(ctx context.Context, pageNumber, pageSize int) ([]model.ThreadModel, error) {
+	var threadList []model.ThreadModel
+	err := utils.GetCache(s.redisCache, ctx, fmt.Sprintf("thread:list:page:%d:size:%d", pageNumber, pageSize), threadList)
+	return threadList, err
+}
+
+func (s *ThreadService) setListThreadToCache(ctx context.Context, pageNumber, pageSize int, threadList []model.ThreadModel, ttl time.Duration) error {
+	return utils.SetCache(s.redisCache, ctx, fmt.Sprintf("thread:list:page:%d:size:%d", pageNumber, pageSize), threadList, ttl)
+}
+
+func (s *ThreadService) listThreadByHandleFromCache(ctx context.Context, handle string) ([]model.ThreadModel, error) {
+	var threadList []model.ThreadModel
+	err := utils.GetCache(s.redisCache, ctx, fmt.Sprintf("thread:list:handle:%s", handle), &threadList)
+	return threadList, err
+}
+
+func (s *ThreadService) setListThreadByHandleToCache(ctx context.Context, handle string, threadList []model.ThreadModel, ttl time.Duration) error {
+	return utils.SetCache(s.redisCache, ctx, fmt.Sprintf("thread:list:handle:%s", handle), threadList, ttl)
 }
 
 func (s *ThreadService) getThreadFromCache(ctx context.Context, threadID int) (*model.ThreadModel, error) {
 	var thread *model.ThreadModel
-	err := s.getFromCache(ctx, fmt.Sprintf("thread:%d", threadID), thread)
+	err := utils.GetCache(s.redisCache, ctx, fmt.Sprintf("thread:%d", threadID), thread)
 	return thread, err
 }
 
 func (s *ThreadService) setThreadToCache(ctx context.Context, thread *model.ThreadModel, ttl time.Duration) error {
-	return s.setToCache(ctx, fmt.Sprintf("thread:%d", thread.ID), thread, ttl)
+	return utils.SetCache(s.redisCache, ctx, fmt.Sprintf("thread:%d", thread.ID), thread, ttl)
 }
