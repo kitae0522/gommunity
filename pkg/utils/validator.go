@@ -26,18 +26,20 @@ func Validate(i interface{}) []exception.ErrValidateResult {
 }
 
 func Bind(ctx *fiber.Ctx, targetStruct interface{}, actionMessage string) *exception.ErrResponseCtx {
-	errs := make([]exception.ErrValidateResult, 0)
-
-	if err := parsePayload(targetStruct, ctx.ParamsParser, "Params"); err != nil {
-		errs = append(errs, *err)
+	var errs []exception.ErrValidateResult
+	checkList := []struct {
+		field  string
+		parser func(interface{}) error
+	}{
+		{"Params", ctx.ParamsParser},
+		{"Headers", ctx.ReqHeaderParser},
+		{"Query", ctx.QueryParser},
 	}
 
-	if err := parsePayload(targetStruct, ctx.ReqHeaderParser, "Headers"); err != nil {
-		errs = append(errs, *err)
-	}
-
-	if err := parsePayload(targetStruct, ctx.QueryParser, "Query"); err != nil {
-		errs = append(errs, *err)
+	for _, checkItem := range checkList {
+		if err := parsePayload(targetStruct, checkItem.parser, checkItem.field); err != nil {
+			errs = append(errs, *err)
+		}
 	}
 
 	if ctx.GetReqHeaders()["Content-Type"] != nil && ctx.GetReqHeaders()["Content-Type"][0] == "application/json" {
@@ -47,11 +49,12 @@ func Bind(ctx *fiber.Ctx, targetStruct interface{}, actionMessage string) *excep
 	}
 
 	errs = append(errs, Validate(targetStruct)...)
+
 	if len(errs) > 0 {
 		errMessage := fmt.Sprintf("❌ %s 실패. Body Binding 과정에서 문제 발생", actionMessage)
-		ctxResponse := exception.GenerateErrorCtx(fiber.StatusBadRequest, errMessage, errs)
-		return ctxResponse
+		return exception.GenerateErrorCtx(fiber.StatusBadRequest, errMessage, errs)
 	}
+
 	return nil
 }
 
