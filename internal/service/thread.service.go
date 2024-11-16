@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
@@ -73,7 +76,15 @@ func (s *ThreadService) ListThreadByHandle(ctx context.Context, handle string) (
 }
 
 func (s *ThreadService) GetThreadByID(ctx context.Context, threadID int) (*model.ThreadModel, *exception.ErrResponseCtx) {
-	thread, err := s.threadRepo.GetThreadByID(ctx, threadID)
+	thread, err := s.getThreadFromCache(ctx, threadID)
+	if err != nil {
+		return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 조회 실패. 캐시하는 과정에서 문제가 발생했습니다.", err)
+	}
+	if thread != nil {
+		return thread, nil
+	}
+
+	thread, err = s.threadRepo.GetThreadByID(ctx, threadID)
 	if err != nil {
 		switch err {
 		case model.ErrNotFound:
@@ -82,6 +93,11 @@ func (s *ThreadService) GetThreadByID(ctx context.Context, threadID int) (*model
 			return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 조회 실패. Repository에서 문제가 발생했습니다.", err)
 		}
 	}
+
+	if err := s.setThreadToCache(ctx, thread, 5*time.Minute); err != nil {
+		return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 조회 실패. 캐시에 저장하지 못했습니다.", err)
+	}
+
 	return thread, nil
 }
 
@@ -96,4 +112,32 @@ func (s *ThreadService) CommentsByID(ctx context.Context, threadID int) ([]model
 		}
 	}
 	return comments, nil
+}
+
+func (s *ThreadService) getFromCache(ctx context.Context, key string, data interface{}) error {
+	cachedData, err := s.redisCache.Get(ctx, key).Bytes()
+	if err == redis.Nil {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	return json.Unmarshal(cachedData, data)
+}
+
+func (s *ThreadService) setToCache(ctx context.Context, key string, data interface{}, ttl time.Duration) error {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	return s.redisCache.Set(ctx, key, jsonData, ttl).Err()
+}
+
+func (s *ThreadService) getThreadFromCache(ctx context.Context, threadID int) (*model.ThreadModel, error) {
+	var thread *model.ThreadModel
+	err := s.getFromCache(ctx, fmt.Sprintf("thread:%d", threadID), thread)
+	return thread, err
+}
+
+func (s *ThreadService) setThreadToCache(ctx context.Context, thread *model.ThreadModel, ttl time.Duration) error {
+	return s.setToCache(ctx, fmt.Sprintf("thread:%d", thread.ID), thread, ttl)
 }
