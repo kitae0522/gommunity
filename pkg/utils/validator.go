@@ -47,9 +47,12 @@ func Bind(ctx *fiber.Ctx, targetStruct interface{}, actionMessage string) *excep
 	}
 
 	errs = append(errs, Validate(targetStruct)...)
-	errMessage := fmt.Sprintf("❌ %s 실패. Body Binding 과정에서 문제 발생", actionMessage)
-	ctxResponse := exception.GenerateErrorCtx(fiber.StatusBadRequest, errMessage, errs)
-	return ctxResponse
+	if len(errs) > 0 {
+		errMessage := fmt.Sprintf("❌ %s 실패. Body Binding 과정에서 문제 발생", actionMessage)
+		ctxResponse := exception.GenerateErrorCtx(fiber.StatusBadRequest, errMessage, errs)
+		return ctxResponse
+	}
+	return nil
 }
 
 func parsePayload(target interface{}, parseFunc func(interface{}) error, fieldName string) *exception.ErrValidateResult {
