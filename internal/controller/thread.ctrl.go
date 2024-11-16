@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/kitae0522/gommunity/internal/dto"
@@ -19,9 +20,9 @@ func NewThreadController(service *service.ThreadService) *ThreadController {
 	return &ThreadController{threadService: service}
 }
 
-func initThreadDI(dbconn *model.PrismaClient) *ThreadController {
+func initThreadDI(dbconn *model.PrismaClient, rdconn *redis.Client) *ThreadController {
 	repository := repository.NewThreadRepository(dbconn)
-	service := service.NewThreadService(repository)
+	service := service.NewThreadService(repository, rdconn)
 	handler := NewThreadController(service)
 	return handler
 }
@@ -51,7 +52,7 @@ func (c *ThreadController) CreateThread(ctx *fiber.Ctx) error {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
-	thread, err := c.threadService.CreateThread(&createThreadPayload)
+	thread, err := c.threadService.CreateThread(ctx.Context(), &createThreadPayload)
 	if err != nil {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
@@ -65,7 +66,7 @@ func (c *ThreadController) CreateThread(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) ListThread(ctx *fiber.Ctx) error {
-	threads, err := c.threadService.ListThread()
+	threads, err := c.threadService.ListThread(ctx.Context())
 	if err != nil {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
@@ -84,7 +85,7 @@ func (c *ThreadController) ListThreadByHandle(ctx *fiber.Ctx) error {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
-	threads, err := c.threadService.ListThreadByHandle(listThreadPayload.Handle)
+	threads, err := c.threadService.ListThreadByHandle(ctx.Context(), listThreadPayload.Handle)
 	if err != nil {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
@@ -104,12 +105,12 @@ func (c *ThreadController) GetThreadByID(ctx *fiber.Ctx) error {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
-	thread, err := c.threadService.GetThreadByID(getThreadPayload.ThreadID)
+	thread, err := c.threadService.GetThreadByID(ctx.Context(), getThreadPayload.ThreadID)
 	if err != nil {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
-	comments, err := c.threadService.CommentsByID(getThreadPayload.ThreadID)
+	comments, err := c.threadService.CommentsByID(ctx.Context(), getThreadPayload.ThreadID)
 	if err != nil {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}

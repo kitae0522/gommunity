@@ -15,26 +15,26 @@ func NewThreadRepository(prismaClient *model.PrismaClient) *ThreadRepository {
 	return &ThreadRepository{client: prismaClient}
 }
 
-func (r *ThreadRepository) CreateThread(req *dto.CreateThreadRequest) (*model.ThreadModel, error) {
+func (r *ThreadRepository) CreateThread(ctx context.Context, req *dto.CreateThreadRequest) (*model.ThreadModel, error) {
 	thread, err := r.client.Thread.CreateOne(
 		model.Thread.Content.Set(req.Content),
 		model.Thread.User.Link(model.Users.ID.Equals(req.UserID)),
 		model.Thread.Title.SetIfPresent(req.Title),
 		model.Thread.ImgURL.SetIfPresent(req.ImgUrl),
-	).Exec(context.Background())
+	).Exec(ctx)
 
 	return thread, err
 }
 
-func (r *ThreadRepository) ListThread() ([]model.ThreadModel, error) {
+func (r *ThreadRepository) ListThread(ctx context.Context) ([]model.ThreadModel, error) {
 	listThread, err := r.client.Thread.FindMany(
 		model.Thread.ParentThread.IsNull(),
-	).Exec(context.Background())
+	).Exec(ctx)
 	return listThread, err
 }
 
-func (r *ThreadRepository) ListThreadByHandle(handle string) ([]model.ThreadModel, error) {
-	user, err := r.getUserByHandle(handle)
+func (r *ThreadRepository) ListThreadByHandle(ctx context.Context, handle string) ([]model.ThreadModel, error) {
+	user, err := r.getUserByHandle(ctx, handle)
 	if err != nil {
 		return nil, err
 	}
@@ -54,35 +54,35 @@ func (r *ThreadRepository) ListThreadByHandle(handle string) ([]model.ThreadMode
 		model.Thread.Dislikes.Field(),
 		model.Thread.CreatedAt.Field(),
 		model.Thread.UpdatedAt.Field(),
-	).Exec(context.Background())
+	).Exec(ctx)
 
 	return listThread, err
 }
 
-func (r *ThreadRepository) GetThreadByID(threadID int) (*model.ThreadModel, error) {
+func (r *ThreadRepository) GetThreadByID(ctx context.Context, threadID int) (*model.ThreadModel, error) {
 	thread, err := r.client.Thread.FindUnique(
 		model.Thread.ID.Equals(threadID),
-	).Exec(context.Background())
+	).Exec(ctx)
 
 	return thread, err
 }
 
-func (r *ThreadRepository) CommentsByID(threadID int) ([]model.ThreadModel, error) {
+func (r *ThreadRepository) CommentsByID(ctx context.Context, threadID int) ([]model.ThreadModel, error) {
 	commentThreads, err := r.client.Thread.FindMany(
 		model.Thread.ParentThread.Equals(threadID),
-	).Exec(context.Background())
+	).Exec(ctx)
 
 	return commentThreads, err
 }
 
-func (r *ThreadRepository) LinkRelation(txns []model.PrismaTransaction) error {
-	if err := r.client.Prisma.Transaction(txns...).Exec(context.Background()); err != nil {
+func (r *ThreadRepository) LinkRelation(ctx context.Context, txns []model.PrismaTransaction) error {
+	if err := r.client.Prisma.Transaction(txns...).Exec(ctx); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *ThreadRepository) LinkParentThread(threadID, parentID int) model.ThreadUniqueTxResult {
+func (r *ThreadRepository) LinkParentThread(ctx context.Context, threadID, parentID int) model.ThreadUniqueTxResult {
 	return r.client.Thread.FindUnique(
 		model.Thread.ID.Equals(threadID),
 	).Update(
@@ -92,7 +92,7 @@ func (r *ThreadRepository) LinkParentThread(threadID, parentID int) model.Thread
 	).Tx()
 }
 
-func (r *ThreadRepository) LinkNextThread(threadID, nextID int) model.ThreadUniqueTxResult {
+func (r *ThreadRepository) LinkNextThread(ctx context.Context, threadID, nextID int) model.ThreadUniqueTxResult {
 	return r.client.Thread.FindUnique(
 		model.Thread.ID.Equals(threadID),
 	).Update(
@@ -102,7 +102,7 @@ func (r *ThreadRepository) LinkNextThread(threadID, nextID int) model.ThreadUniq
 	).Tx()
 }
 
-func (r *ThreadRepository) LinkPrevThread(threadID, prevID int) model.ThreadUniqueTxResult {
+func (r *ThreadRepository) LinkPrevThread(ctx context.Context, threadID, prevID int) model.ThreadUniqueTxResult {
 	return r.client.Thread.FindUnique(
 		model.Thread.ID.Equals(threadID),
 	).Update(
@@ -112,9 +112,9 @@ func (r *ThreadRepository) LinkPrevThread(threadID, prevID int) model.ThreadUniq
 	).Tx()
 }
 
-func (r *ThreadRepository) getUserByHandle(handle string) (*model.UsersModel, error) {
+func (r *ThreadRepository) getUserByHandle(ctx context.Context, handle string) (*model.UsersModel, error) {
 	user, err := r.client.Users.FindUnique(
 		model.Users.Handle.Equals(handle),
-	).Exec(context.Background())
+	).Exec(ctx)
 	return user, err
 }

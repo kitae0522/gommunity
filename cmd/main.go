@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"log"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 
+	"github.com/kitae0522/gommunity/internal/config"
 	"github.com/kitae0522/gommunity/internal/controller"
 	"github.com/kitae0522/gommunity/internal/model"
 )
@@ -35,6 +38,15 @@ func main() {
 		}
 	}()
 
-	controller.EnrollRouter(app, dbconn)
+	rdconn := redis.NewClient(&redis.Options{
+		Addr:     config.Envs.RedisHost,
+		Password: config.Envs.RedisPassword,
+		DB:       int(config.Envs.RedisDB),
+	})
+	if _, err := rdconn.Ping(context.Background()).Result(); err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+
+	controller.EnrollRouter(app, dbconn, rdconn)
 	log.Fatal(app.Listen(port))
 }

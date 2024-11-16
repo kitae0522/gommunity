@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/kitae0522/gommunity/internal/dto"
@@ -19,9 +20,9 @@ func NewAuthController(service *service.AuthService) *AuthController {
 	return &AuthController{authService: service}
 }
 
-func initAuthDI(dbconn *model.PrismaClient) *AuthController {
+func initAuthDI(dbconn *model.PrismaClient, rdconn *redis.Client) *AuthController {
 	repository := repository.NewAuthRepository(dbconn)
-	service := service.NewAuthService(repository)
+	service := service.NewAuthService(repository, rdconn)
 	handler := NewAuthController(service)
 	return handler
 }
@@ -49,7 +50,7 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
-	err := c.authService.Register(createUserPayload)
+	err := c.authService.Register(ctx.Context(), createUserPayload)
 	if err != nil {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
@@ -67,7 +68,7 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
-	token, err := c.authService.Login(loginPayload.Email, loginPayload.Password)
+	token, err := c.authService.Login(ctx.Context(), loginPayload.Email, loginPayload.Password)
 	if err != nil {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
@@ -91,7 +92,7 @@ func (c *AuthController) PasswordReset(ctx *fiber.Ctx) error {
 		PasswordPayload: &passwordResetPayload,
 	}
 
-	if err := c.authService.PasswordReset(resetEntity); err != nil {
+	if err := c.authService.PasswordReset(ctx.Context(), resetEntity); err != nil {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
 
@@ -106,7 +107,7 @@ func (c *AuthController) Withdraw(ctx *fiber.Ctx) error {
 	var withdrawPayload dto.WithdrawRequest
 	withdrawPayload.ID = middleware.GetIdFromMiddleware(ctx)
 
-	if err := c.authService.Withdraw(withdrawPayload.ID); err != nil {
+	if err := c.authService.Withdraw(ctx.Context(), withdrawPayload.ID); err != nil {
 		return ctx.Status(err.StatusCode).JSON(err)
 	}
 

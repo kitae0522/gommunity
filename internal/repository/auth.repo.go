@@ -17,7 +17,7 @@ func NewAuthRepository(prismaClient *model.PrismaClient) *AuthRepository {
 	return &AuthRepository{client: prismaClient}
 }
 
-func (r *AuthRepository) CreateUser(req dto.RegisterRequest) (*model.UsersModel, error) {
+func (r *AuthRepository) CreateUser(ctx context.Context, req dto.RegisterRequest) (*model.UsersModel, error) {
 	salt := crypt.EncodeBase64(utils.GenerateUUID())
 	hashPassword := crypt.NewSHA256(req.Password, salt)
 
@@ -28,16 +28,16 @@ func (r *AuthRepository) CreateUser(req dto.RegisterRequest) (*model.UsersModel,
 		model.Users.Salt.Set(salt),
 		model.Users.Role.Set(model.UserRolesUser),
 		model.Users.Name.Set(req.Name),
-	).Exec(context.Background())
+	).Exec(ctx)
 	return user, err
 }
 
-func (r *AuthRepository) GetUserByEmail(email string) (*model.UsersModel, error) {
-	return r.findUserByEmail(email)
+func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*model.UsersModel, error) {
+	return r.findUserByEmail(ctx, email)
 }
 
-func (r *AuthRepository) GetUserPasswordByEmail(email string) (*dto.PasswordEntity, error) {
-	user, err := r.findUserByEmail(email)
+func (r *AuthRepository) GetUserPasswordByEmail(ctx context.Context, email string) (*dto.PasswordEntity, error) {
+	user, err := r.findUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +50,8 @@ func (r *AuthRepository) GetUserPasswordByEmail(email string) (*dto.PasswordEnti
 	}, err
 }
 
-func (r *AuthRepository) GetUserPasswordByID(ID string) (*dto.PasswordEntity, error) {
-	user, err := r.client.Users.FindUnique(model.Users.ID.Equals(ID)).Exec(context.Background())
+func (r *AuthRepository) GetUserPasswordByID(ctx context.Context, ID string) (*dto.PasswordEntity, error) {
+	user, err := r.client.Users.FindUnique(model.Users.ID.Equals(ID)).Exec(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -65,29 +65,29 @@ func (r *AuthRepository) GetUserPasswordByID(ID string) (*dto.PasswordEntity, er
 	}, err
 }
 
-func (r *AuthRepository) UpdateUserHandle(ID string, handle string) error {
+func (r *AuthRepository) UpdateUserHandle(ctx context.Context, ID string, handle string) error {
 	_, err := r.client.Users.FindUnique(
 		model.Users.ID.Equals(ID),
 	).Update(
 		model.Users.Handle.Set(handle),
-	).Exec(context.Background())
+	).Exec(ctx)
 	return err
 }
 
-func (r *AuthRepository) UpdateUserPassword(ID, salt, plainPassword string) error {
+func (r *AuthRepository) UpdateUserPassword(ctx context.Context, ID, salt, plainPassword string) error {
 	hashPassword := crypt.NewSHA256(plainPassword, salt)
 	_, err := r.client.Users.FindUnique(
 		model.Users.ID.Equals(ID),
 	).Update(
 		model.Users.HashPassword.Set(hashPassword),
-	).Exec(context.Background())
+	).Exec(ctx)
 	return err
 }
 
-func (r *AuthRepository) DeleteUser(ID string) (bool, error) {
+func (r *AuthRepository) DeleteUser(ctx context.Context, ID string) (bool, error) {
 	_, err := r.client.Users.FindUnique(
 		model.Users.ID.Equals(ID),
-	).Delete().Exec(context.Background())
+	).Delete().Exec(ctx)
 
 	if err != nil {
 		return false, err
@@ -95,9 +95,9 @@ func (r *AuthRepository) DeleteUser(ID string) (bool, error) {
 	return true, nil
 }
 
-func (r *AuthRepository) findUserByEmail(email string) (*model.UsersModel, error) {
+func (r *AuthRepository) findUserByEmail(ctx context.Context, email string) (*model.UsersModel, error) {
 	user, err := r.client.Users.FindUnique(
 		model.Users.Email.Equals(email),
-	).Exec(context.Background())
+	).Exec(ctx)
 	return user, err
 }

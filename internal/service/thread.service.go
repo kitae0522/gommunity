@@ -1,7 +1,11 @@
 package service
 
 import (
+	"context"
+
+	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/kitae0522/gommunity/internal/dto"
 	"github.com/kitae0522/gommunity/internal/model"
 	"github.com/kitae0522/gommunity/internal/repository"
@@ -10,14 +14,18 @@ import (
 
 type ThreadService struct {
 	threadRepo *repository.ThreadRepository
+	redisCache *redis.Client
 }
 
-func NewThreadService(repo *repository.ThreadRepository) *ThreadService {
-	return &ThreadService{threadRepo: repo}
+func NewThreadService(repo *repository.ThreadRepository, rdconn *redis.Client) *ThreadService {
+	return &ThreadService{
+		threadRepo: repo,
+		redisCache: rdconn,
+	}
 }
 
-func (s *ThreadService) CreateThread(req *dto.CreateThreadRequest) (*model.ThreadModel, *exception.ErrResponseCtx) {
-	thread, err := s.threadRepo.CreateThread(req)
+func (s *ThreadService) CreateThread(ctx context.Context, req *dto.CreateThreadRequest) (*model.ThreadModel, *exception.ErrResponseCtx) {
+	thread, err := s.threadRepo.CreateThread(ctx, req)
 	if err != nil {
 		switch err {
 		case model.ErrNotFound:
@@ -29,30 +37,30 @@ func (s *ThreadService) CreateThread(req *dto.CreateThreadRequest) (*model.Threa
 
 	txns := make([]model.PrismaTransaction, 0)
 	if req.ParentThread != nil {
-		txns = append(txns, s.threadRepo.LinkParentThread(thread.ID, *req.ParentThread))
+		txns = append(txns, s.threadRepo.LinkParentThread(ctx, thread.ID, *req.ParentThread))
 	} else if req.NextThread != nil {
-		txns = append(txns, s.threadRepo.LinkNextThread(thread.ID, *req.NextThread))
+		txns = append(txns, s.threadRepo.LinkNextThread(ctx, thread.ID, *req.NextThread))
 	} else if req.PrevThread != nil {
-		txns = append(txns, s.threadRepo.LinkPrevThread(thread.ID, *req.NextThread))
+		txns = append(txns, s.threadRepo.LinkPrevThread(ctx, thread.ID, *req.NextThread))
 	}
 
-	if err := s.threadRepo.LinkRelation(txns); err != nil {
+	if err := s.threadRepo.LinkRelation(ctx, txns); err != nil {
 		return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 생성 실패. Reposioty에서 문제가 발생했습니다.", err)
 	}
 
 	return thread, nil
 }
 
-func (s *ThreadService) ListThread() ([]model.ThreadModel, *exception.ErrResponseCtx) {
-	threadList, err := s.threadRepo.ListThread()
+func (s *ThreadService) ListThread(ctx context.Context) ([]model.ThreadModel, *exception.ErrResponseCtx) {
+	threadList, err := s.threadRepo.ListThread(ctx)
 	if err != nil {
 		return nil, exception.GenerateErrorCtx(fiber.StatusInternalServerError, "❌ 쓰레드 조회 실패. Repository에서 문제가 발생했습니다.", err)
 	}
 	return threadList, nil
 }
 
-func (s *ThreadService) ListThreadByHandle(handle string) ([]model.ThreadModel, *exception.ErrResponseCtx) {
-	threadList, err := s.threadRepo.ListThreadByHandle(handle)
+func (s *ThreadService) ListThreadByHandle(ctx context.Context, handle string) ([]model.ThreadModel, *exception.ErrResponseCtx) {
+	threadList, err := s.threadRepo.ListThreadByHandle(ctx, handle)
 	if err != nil {
 		switch err {
 		case model.ErrNotFound:
@@ -64,8 +72,8 @@ func (s *ThreadService) ListThreadByHandle(handle string) ([]model.ThreadModel, 
 	return threadList, nil
 }
 
-func (s *ThreadService) GetThreadByID(threadID int) (*model.ThreadModel, *exception.ErrResponseCtx) {
-	thread, err := s.threadRepo.GetThreadByID(threadID)
+func (s *ThreadService) GetThreadByID(ctx context.Context, threadID int) (*model.ThreadModel, *exception.ErrResponseCtx) {
+	thread, err := s.threadRepo.GetThreadByID(ctx, threadID)
 	if err != nil {
 		switch err {
 		case model.ErrNotFound:
@@ -77,8 +85,8 @@ func (s *ThreadService) GetThreadByID(threadID int) (*model.ThreadModel, *except
 	return thread, nil
 }
 
-func (s *ThreadService) CommentsByID(threadID int) ([]model.ThreadModel, *exception.ErrResponseCtx) {
-	comments, err := s.threadRepo.CommentsByID(threadID)
+func (s *ThreadService) CommentsByID(ctx context.Context, threadID int) ([]model.ThreadModel, *exception.ErrResponseCtx) {
+	comments, err := s.threadRepo.CommentsByID(ctx, threadID)
 	if err != nil {
 		switch err {
 		case model.ErrNotFound:
