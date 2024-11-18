@@ -61,3 +61,7 @@ type RemoveThreadByIDRequest struct {
 	ID       string `json:"id" validate:"required"`
 	ThreadID int    `params:"threadID" validate:"required"`
 }
+
+type InteractionRequest struct {
+	ThreadID int `json:"threadID" validate:"required"`
+}
