@@ -29,6 +29,7 @@ type ThreadResponse struct {
 	Handle    string    `json:"handle"`
 	Title     string    `json:"title"`
 	Content   string    `json:"content"`
+	ImgURL    string    `json:"imgUrl"`
 	Views     int       `json:"views"`
 	Likes     int       `json:"likes"`
 	Dislikes  int       `json:"dislikes"`

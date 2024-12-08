@@ -74,12 +74,14 @@ func (s *ThreadService) ListThread(ctx context.Context, pageNumber, pageSize int
 
 	var listThread []dto.ThreadResponse
 	for _, thread := range listThreadFromRepo {
+		imgUrl, _ := thread.ImgURL()
 		threadDTO := dto.ThreadResponse{
 			ID:        thread.ID,
 			UserID:    thread.UserID,
 			Handle:    "",
 			Title:     thread.Title,
 			Content:   thread.Content,
+			ImgURL:    imgUrl,
 			Views:     thread.Views,
 			Likes:     thread.Likes,
 			Dislikes:  thread.Dislikes,
