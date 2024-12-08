@@ -11,6 +11,7 @@ var (
 	ErrUnexpectedSigningMethod  = errors.New("unexpected signing method")
 	ErrInvalidTokenClaims       = errors.New("invalid token claims")
 	ErrMissingParams            = errors.New("missing params")
+	ErrStructConversion         = errors.New("struct conversion error")
 )
 
 type ErrValidateResult struct {
