@@ -35,9 +35,9 @@ model Users {
 model Thread {
   id            Int               @id @default(autoincrement())
   userID        String
-  title         String?
+  title         String            @db.VarChar(255)
   imgUrl        String?
-  content       String
+  content       String            @db.Text
   parentThread  Int?
   nextThread    Int?
   prevThread    Int?

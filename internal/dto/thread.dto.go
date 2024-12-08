@@ -1,12 +1,14 @@
 package dto
 
 import (
+	"time"
+
 	"github.com/kitae0522/gommunity/internal/model"
 )
 
 type CreateThreadRequest struct {
 	UserID       string  `json:"userID"`
-	Title        *string `json:"title"`
+	Title        string  `json:"title"`
 	ImgUrl       *string `json:"imgUrl"`
 	Content      string  `json:"content" validate:"required"`
 	ParentThread *int    `json:"parentThread"`
@@ -21,16 +23,29 @@ type CreateThreadReponse struct {
 	Thread     model.ThreadModel `json:"thread"`
 }
 
+type ThreadResponse struct {
+	ID        int       `json:"id"`
+	UserID    string    `json:"userID"`
+	Handle    string    `json:"handle"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"`
+	Views     int       `json:"views"`
+	Likes     int       `json:"likes"`
+	Dislikes  int       `json:"dislikes"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 type ListThreadRequest struct {
 	PageNumber int `query:"pageNumber"`
 	PageSize   int `query:"pageSize"`
 }
 
 type ListThreadResponse struct {
-	IsError    bool                `json:"isError"`
-	StatusCode int                 `json:"statusCode"`
-	Message    string              `json:"message"`
-	Threads    []model.ThreadModel `json:"threads"`
+	IsError    bool             `json:"isError"`
+	StatusCode int              `json:"statusCode"`
+	Message    string           `json:"message"`
+	Threads    []ThreadResponse `json:"threads"`
 }
 
 type ListThreadByHandleRequest struct {

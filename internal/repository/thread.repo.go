@@ -17,9 +17,9 @@ func NewThreadRepository(prismaClient *model.PrismaClient) *ThreadRepository {
 
 func (r *ThreadRepository) CreateThread(ctx context.Context, req *dto.CreateThreadRequest) (*model.ThreadModel, error) {
 	thread, err := r.client.Thread.CreateOne(
+		model.Thread.Title.Set(req.Title),
 		model.Thread.Content.Set(req.Content),
 		model.Thread.User.Link(model.Users.ID.Equals(req.UserID)),
-		model.Thread.Title.SetIfPresent(req.Title),
 		model.Thread.ImgURL.SetIfPresent(req.ImgUrl),
 	).Exec(ctx)
 
@@ -168,6 +168,10 @@ func (r *ThreadRepository) LinkPrevThread(ctx context.Context, threadID, prevID 
 			model.Thread.ID.Equals(prevID),
 		),
 	).Tx()
+}
+
+func (r *ThreadRepository) GetUserByID(ctx context.Context, id string) (*model.UsersModel, error) {
+	return r.client.Users.FindUnique(model.Users.ID.Equals(id)).Exec(ctx)
 }
 
 func (r *ThreadRepository) getUserByHandle(ctx context.Context, handle string) (*model.UsersModel, error) {
