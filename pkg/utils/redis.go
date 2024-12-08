@@ -8,14 +8,14 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-func GetCache(rdClient *redis.Client, ctx context.Context, key string, data interface{}) error {
+func GetCache(rdClient *redis.Client, ctx context.Context, key string, ptr interface{}) error {
 	cachedData, err := rdClient.Get(ctx, key).Bytes()
 	if err == redis.Nil {
 		return nil
 	} else if err != nil {
 		return err
 	}
-	return json.Unmarshal(cachedData, &data)
+	return json.Unmarshal(cachedData, ptr)
 }
 
 func SetCache(rdClient *redis.Client, ctx context.Context, key string, data interface{}, ttl time.Duration) error {
