@@ -4,19 +4,20 @@ root = "."
 tmp_dir = ".air"
 
 [build]
-  bin = ".air/main"
-  cmd = "go build -o .air/main cmd/main.go"
-  delay = 3000
-  watch_dir = "./"
-  include_ext = ["go"]
+  bin = "./.air/main"
+  cmd = "go build -o ./.air/main ./cmd/main.go"
+  delay = 1000
   exclude_dir = [".air"]
+  exclude_file = []
+  exclude_regex = []
+  exclude_unchanged = false
+  follow_symlink = false
+  include_dir = []
+  include_ext = ["go", "tpl", "tmpl", "html"]
   kill_delay = "0s"
   log = "build-errors.log"
-  rerun_delay = 5000
-
-[server]
-  port = 8080
-  full_reload = false
+  send_interrupt = false
+  stop_on_error = true
 
 [color]
   app = ""
@@ -26,12 +27,7 @@ tmp_dir = ".air"
   watcher = "cyan"
 
 [log]
-  main_only = false
   time = false
 
 [misc]
   clean_on_exit = false
-
-[screen]
-  clear_on_rebuild = false
-  keep_scroll = true
